@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>PublicForums</title>
+<style>
+:root {--bg:#0a0a0a;--text:#fff;--post-bg:#111;--reply-bg:#222;--accent:#444;--up:#4CAF50;--down:#F44336;}
+body.light {--bg:#f0f0f0;--text:#111;--post-bg:#fff;--reply-bg:#eee;--accent:#ccc;--up:#4CAF50;--down:#F44336;}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;align-items:center;transition:0.3s;height:100vh;overflow:hidden;}
+header{padding:15px;background:var(--post-bg);border-bottom:1px solid var(--accent);width:100%;display:flex;justify-content:center;align-items:center;gap:10px;position:relative;}
+header img{height:40px;width:40px;object-fit:contain;animation:smoothBounce 1.2s infinite alternate;animation-timing-function:cubic-bezier(0.4,0,0.2,1);}
+@keyframes smoothBounce {0%{transform:translateY(0);}20%{transform:translateY(-2px);}50%{transform:translateY(0);}80%{transform:translateY(2px);}100%{transform:translateY(0);}}
+header h1{margin:0;font-size:24px;font-weight:bold;text-align:center;flex-shrink:0;}
+header button{position:absolute;right:15px;}
+#adminLoginModal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--post-bg);padding:20px;border-radius:10px;display:none;flex-direction:column;gap:10px;z-index:1000;border:1px solid var(--accent);}
+#postBox{width:90%;max-width:600px;margin:15px auto;padding:15px;background:var(--post-bg);border-radius:8px;display:flex;flex-direction:column;gap:10px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.5);}
+#postBox textarea{width:95%;background:var(--bg);color:var(--text);border:1px solid var(--accent);border-radius:5px;padding:10px;font-size:15px;height:90px;resize:none;}
+button{padding:10px;border:none;background:var(--accent);color:var(--text);border-radius:6px;font-size:14px;cursor:pointer;transition:0.3s;}
+button:active{background:#666;}
+#feed{width:90%;max-width:600px;margin:20px auto;display:flex;flex-direction:column;gap:15px;flex-grow:1;overflow-y:auto;padding-right:5px;}
+#feed::-webkit-scrollbar{width:6px;} 
+#feed::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px;} 
+#feed::-webkit-scrollbar-track{background:transparent;}
+.post{background:var(--post-bg);padding:12px;border-radius:10px;border:1px solid var(--accent);word-wrap:break-word;font-size:15px;display:flex;flex-direction:column;position:relative;box-shadow:0 2px 6px rgba(0,0,0,0.5);}
+.post-header{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 8px;border-radius:6px;}
+.post-header .name {font-weight:bold;margin-right:6px;}
+.post-header .op-tag{font-size:12px;background:var(--accent);color:var(--text);padding:1px 4px;margin-left:4px;border-radius:4px;}
+.post-content::before {content: "| "; color: var(--accent); margin-right:4px;}
+.post-content{margin-top:8px;padding:6px 0;}
+.post-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;}
+.bottom-left, .bottom-right{display:flex;align-items:center;gap:5px;}
+.bottom-left{justify-content:flex-start;}
+.bottom-right{justify-content:flex-end;}
+.replies{margin-top:10px;display:flex;flex-direction:column;gap:8px;overflow:hidden;border-left:2px solid var(--accent);border-radius:6px;padding-left:8px;}
+.replies.hidden{display:none;}
+.reply-item{padding:8px;border-radius:8px;position:relative;box-shadow:0 1px 4px rgba(0,0,0,0.5);background:var(--reply-bg);border:1px solid var(--accent);opacity:0;transform:translateX(-20px);transition:transform 0.3s ease, opacity 0.3s ease;}
+.reply-item.show{opacity:1;transform:translateX(0);}
+.reply-item .op-tag{font-size:10px;background:var(--accent);color:var(--text);padding:1px 4px;margin-left:4px;border-radius:4px;}
+#replyOverlay{position:fixed;bottom:-100%;left:0;width:100%;background:var(--post-bg);padding:15px;display:flex;flex-direction:column;gap:10px;transition:0.3s;z-index:999;box-shadow:0 -2px 8px rgba(0,0,0,0.7);}
+#replyOverlay textarea{width:95%;background:var(--bg);color:var(--text);border:1px solid var(--accent);border-radius:5px;padding:10px;height:70px;resize:none;}
+#replyOverlay button{width:95%;margin:auto;}
+#overlayBG{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:none;z-index:998;}
+.toggle-btn{padding:6px 10px;border-radius:5px;border:none;background:var(--accent);color:var(--text);cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;animation:fade 0.5s;}
+.jump-link{font-size:12px;color:#4af;margin-left:5px;cursor:pointer;}
+footer{margin:10px 0;font-size:12px;color:#888;}
+.post-footer .bottom-left, .post-footer .bottom-right, .post-header .top-right{border:1px solid var(--accent);border-radius:6px;padding:4px 6px;display:flex;gap:5px;}
+.upvote, .downvote{display:flex;align-items:center;gap:2px;padding:2px 6px;border-radius:5px;transition:0.2s;font-size:14px;cursor:pointer;}
+.upvote.active{background:var(--up);color:#fff;}
+.downvote.active{background:var(--down);color:#fff;}
+@keyframes fade{0%{transform:scale(0.8);opacity:0;}100%{transform:scale(1);opacity:1;}}
+/* HAMBURGER MENU */
+#menuBtn{position:absolute;left:25px;padding:10px;background:var(--accent);border-radius:6px;cursor:pointer;display:flex;flex-direction:column;gap:5px;justify-content:center;align-items:center;z-index:2101;}
+.menu-line{width:22px;height:3px;background:var(--text);border-radius:4px;}
+#menuOverlayBG{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);display:none;z-index:2100;transition:opacity 240ms ease-in-out;opacity:0;}
+#sideMenu{position:fixed;top:0;left:0;height:100vh;width:270px;max-width:80%;background:var(--post-bg);border-right:1px solid var(--accent);transform:translateX(-100%);transition:transform 280ms cubic-bezier(.2,.8,.2,1);z-index:2101;padding:18px 14px;box-shadow:4px 0 18px rgba(0,0,0,0.6);display:flex;flex-direction:column;gap:12px;box-sizing:border-box;}
+#sideMenu.open{transform:translateX(0);}
+#menuOverlayBG.show{display:block;opacity:1;}
+#sideMenu .menu-header{display:flex;justify-content:space-between;align-items:center;}
+#sideMenu h3{margin:0;font-size:18px;}
+#sideMenu .close-btn{background:transparent;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:6px;border-radius:6px;}
+#sideMenu p{margin:6px 0 12px 0;color:var(--text);opacity:0.9;}
+#sideMenu .menu-item{padding:10px;border-radius:8px;cursor:default;border:1px dashed var(--accent);text-align:center;}
+#sideMenu .menu-item small{display:block;opacity:0.75;font-size:12px;margin-top:6px;}
+@media (max-width:420px){#sideMenu{width:220px;}}
+/* Minimal styles for admin buttons/tags (non-invasive) */
+.delete-btn{background:#b00;padding:6px;border-radius:6px;color:#fff;border:none;font-size:13px;cursor:pointer;}
+.highlight-btn{background:#b57f00;padding:6px;border-radius:6px;color:#fff;border:none;font-size:13px;cursor:pointer;margin-left:8px;}
+.highlight-tag{margin-left:6px;color:#ffd700;font-size:12px;}
+</style>
+</head>
+<body>
+
+<header id="header">
+  <div id="menuBtn" onclick="openMenu()" aria-label="Open menu" role="button" tabindex="0">
+    <div class="menu-line"></div>
+    <div class="menu-line"></div>
+    <div class="menu-line"></div>
+  </div>
+  <img src="img.png" alt="Logo"><h1>PublicForums</h1>
+  <button id="modeBtn" class="toggle-btn" onclick="toggleMode()">🌙</button>
+</header>
+
+<div id="adminLoginModal">
+  <input type="password" id="adminKey" placeholder="Admin Key...">
+  <button onclick="adminLogin()">Login</button>
+  <button onclick="closeAdminModal()">Cancel</button>
+</div>
+
+<div id="postBox">
+  <textarea id="postText" placeholder="Say something..."></textarea>
+  <button onclick="sendPost()">Post</button>
+</div>
+
+<div id="feed"></div>
+
+<div id="overlayBG" onclick="closeReply()"></div>
+<div id="replyOverlay">
+  <textarea id="replyText" placeholder="Write your reply..."></textarea>
+  <button onclick="submitReply()">Send Reply</button>
+</div>
+
+<footer>© 2025 PublicForums. All rights reserved.</footer>
+
+<div id="menuOverlayBG" onclick="closeMenu()" aria-hidden="true"></div>
+
+<nav id="sideMenu" aria-hidden="true" aria-label="Main menu">
+  <div class="menu-header">
+    <h3>Coming Soon!</h3>
+    <button class="close-btn" onclick="closeMenu()" aria-label="Close menu">✕</button>
+  </div>
+  <p>Something cool will be here soon!, stay tuned.</p>
+
+  <div class="menu-item">👋<small>More options coming soon...</small></div>
+
+  <!-- New About Button -->
+  <div class="menu-item" id="aboutBtn" onclick="toggleAbout()">ℹ️ About</div>
+  <div id="aboutContent" style="display:none;padding:10px;border:1px solid var(--accent);border-radius:6px;background:rgba(255,255,255,0.05);color:var(--text);font-size:14px;">
+    Welcome to PublicForums! This is a community-driven forum where you can post, reply, and interact with others anonymously. Enjoy your stay!
+  </div>
+
+  <div style="flex:1"></div>
+  <div style="font-size:12px;color:#aaa;text-align:center">© 2025 PublicForums</div>
+</nav>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+<script>
+// Firebase setup
+const firebaseConfig = { apiKey:"AIzaSyAfl1ogm6RH0TECkHGx8WV51zX7mMNQiRs", authDomain:"whos-34b7d.firebaseapp.com", databaseURL:"https://whos-34b7d-default-rtdb.firebaseio.com", projectId:"whos-34b7d", storageBucket:"whos-34b7d.firebasestorage.app", messagingSenderId:"552966548260", appId:"1:552966548260:web:d5f862b74431e45315a1b1" };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let currentReplyPostId=null,currentReplyParentId=null;
+let isAdmin=false,ADMIN_SECRET="4811";
+const feed=document.getElementById("feed");
+
+let anonName=localStorage.getItem("anonName");
+if(!anonName){ anonName="Anon_"+Math.floor(Math.random()*10000); localStorage.setItem("anonName",anonName); }
+
+function toggleMode(){
+  document.body.classList.toggle("light");
+  document.getElementById("modeBtn").innerText=document.body.classList.contains("light")?"☀️":"🌙";
+}
+
+let clickCount=0;
+document.getElementById("header").addEventListener("click",()=>{
+  clickCount++; if(clickCount===5){document.getElementById("adminLoginModal").style.display="flex";clickCount=0;}
+  setTimeout(()=>{clickCount=0;},1000);
+});
+function closeAdminModal(){document.getElementById("adminLoginModal").style.display="none";}
+
+function sendPost(){
+  const text=document.getElementById("postText").value.trim(); if(!text) return;
+  const newPostRef=db.ref("posts").push();
+  // include deleted flag and highlighted flag
+  newPostRef.set({name:anonName,text:text,time:Date.now(),votes:{},deleted:false,highlighted:false});
+  document.getElementById("postText").value="";
+}
+
+function openReply(postId,parentId=null){
+  currentReplyPostId=postId;
+  currentReplyParentId=parentId;
+  document.getElementById("overlayBG").style.display="block";
+  document.getElementById("replyOverlay").style.bottom="0";
+  setTimeout(()=>document.getElementById("replyText").focus(),150);
+}
+function closeReply(){
+  currentReplyPostId=null;
+  currentReplyParentId=null;
+  document.getElementById("overlayBG").style.display="none";
+  document.getElementById("replyOverlay").style.bottom="-100%";
+  document.getElementById("replyText").value="";
+}
+
+function submitReply(){
+  if(!currentReplyPostId) return;
+  const text=document.getElementById("replyText").value.trim();
+  if(!text) return;
+  const replyData={name:anonName,text:text,time:Date.now(),replyTo:currentReplyParentId||null,deleted:false};
+  if(!currentReplyParentId){
+    db.ref(`replies/${currentReplyPostId}`).push(replyData);
+  }else{
+    db.ref(`replies/${currentReplyPostId}/${currentReplyParentId}/replies`).push(replyData);
+  }
+  closeReply();
+}
+
+function vote(postId,type){
+  const userId=localStorage.getItem("userId")||(Date.now()+"");
+  localStorage.setItem("userId",userId);
+  const voteRef=db.ref(`posts/${postId}/votes/${userId}`);
+  voteRef.once("value").then(snap=>{
+    const prev=snap.val();
+    if(prev===type) voteRef.remove(); else voteRef.set(type);
+  });
+}
+function updateVotes(postId,votesObj){
+  let up=0,down=0;
+  if(votesObj) for(let k in votesObj){if(votesObj[k]==="up")up++;else if(votesObj[k]==="down")down++;}
+  const upElem=document.getElementById("up_"+postId);
+  const downElem=document.getElementById("down_"+postId);
+  const upBtn=document.getElementById("btnUp_"+postId);
+  const downBtn=document.getElementById("btnDown_"+postId);
+  if(upElem) upElem.innerText=up; if(downElem) downElem.innerText=down;
+  const myVote=votesObj?votesObj[localStorage.getItem("userId")]:null;
+  if(upBtn){ myVote==="up"?upBtn.classList.add("active"):upBtn.classList.remove("active");}
+  if(downBtn){ myVote==="down"?downBtn.classList.add("active"):downBtn.classList.remove("active");}
+}
+
+/* ---------------------------
+   Helper: safe path builder for replies
+   path parameter is the path under `replies/<postId>/...` pointing to the reply node
+   Example top-level: path = "<replyId>"
+   Example nested: path = "<parentId>/replies/<childId>/replies/<grandChildId>"
+   --------------------------- */
+
+function deletePost(postId){
+  if(!isAdmin) { alert("Admins only."); return; }
+  const ok = confirm("Delete this post? This replaces the post text for everyone.");
+  if(!ok) return;
+  db.ref(`posts/${postId}`).update({
+    deleted:true,
+    text:"This message has been deleted by an admin of PublicForums"
+  });
+}
+
+function toggleHighlight(postId){
+  if(!isAdmin) { alert("Admins only."); return; }
+  const ref = db.ref(`posts/${postId}/highlighted`);
+  ref.once("value").then(snap=>{
+    const current = !!snap.val();
+    db.ref(`posts/${postId}`).update({ highlighted: !current });
+  });
+}
+
+function deleteReply(postId, replyPath){
+  if(!isAdmin) { alert("Admins only."); return; }
+  if(!replyPath) return;
+  const ok = confirm("Delete this reply? This replaces the reply text for everyone.");
+  if(!ok) return;
+  // update the targeted reply node with deleted flag and replacement text
+  db.ref(`replies/${postId}/${replyPath}`).update({
+    deleted:true,
+    text:"This message has been deleted by an admin of PublicForums"
+  });
+}
+
+/* ---------------------------
+   DOM helpers to add admin buttons
+   - addDeleteButton (posts) already exists
+   - addHighlightButton (posts)
+   - addDeleteButtonReply (replies)
+   --------------------------- */
+
+function addDeleteButton(id, postDiv){
+  if(!postDiv) return;
+  const topRight = postDiv.querySelector(".post-header .top-right");
+  if(!topRight) return;
+  if(topRight.querySelector(".delete-btn")) return;
+  const btn=document.createElement("button");
+  btn.className="delete-btn";
+  btn.innerText="Delete";
+  btn.onclick = (e)=>{
+    e.stopPropagation();
+    const ok = confirm("Delete this post? This will replace the post text for everyone.");
+    if(!ok) return;
+    deletePost(id);
+  };
+  topRight.appendChild(btn);
+}
+
+function addHighlightButton(id, postDiv){
+  if(!postDiv) return;
+  const topRight = postDiv.querySelector(".post-header .top-right");
+  if(!topRight) return;
+  if(topRight.querySelector(".highlight-btn")) return;
+  const btn=document.createElement("button");
+  btn.className="highlight-btn";
+  btn.innerText="Highlight";
+  btn.onclick = (e)=>{
+    e.stopPropagation();
+    toggleHighlight(id);
+  };
+  topRight.appendChild(btn);
+}
+
+// replies: replyDiv is the element for the reply item
+function addDeleteButtonReply(postId, replyPath, replyDiv){
+  if(!replyDiv) return;
+  if(replyDiv.querySelector(".reply-delete-btn")) return;
+  const btn=document.createElement("button");
+  btn.className="delete-btn reply-delete-btn";
+  btn.style.padding="4px 8px";
+  btn.style.fontSize="12px";
+  btn.style.marginLeft="8px";
+  btn.innerText="Delete";
+  btn.onclick=(e)=>{
+    e.stopPropagation();
+    const ok = confirm("Delete this reply? This will replace the reply text for everyone.");
+    if(!ok) return;
+    deleteReply(postId, replyPath);
+  };
+  // place the button in the reply bottom-right area if present, else append
+  const br = replyDiv.querySelector(".bottom-right");
+  if(br) br.appendChild(btn); else replyDiv.appendChild(btn);
+}
+
+/* ---------------------------
+   createPostElement: minimally changed to include:
+   - content element with id="content_<postId>" for safe updates
+   - shows highlight tag if data.highlighted
+   - if isAdmin add admin buttons
+   --------------------------- */
+
+function createPostElement(id,data){
+  if(document.getElementById("post_"+id)) return;
+  const postDiv=document.createElement("div");
+  postDiv.className="post"; postDiv.id="post_"+id;
+  const repliesContainer=document.createElement("div");
+  repliesContainer.className="replies hidden"; repliesContainer.id="replies_"+id;
+
+  const highlightedTag = data.highlighted ? `<span class="highlight-tag">⭐ Admin Highlighted</span>` : "";
+
+  const contentHtml = data.deleted
+    ? `<b>This message has been deleted by an admin of PublicForums</b>`
+    : escapeHtml(data.text);
+
+  const postHTML=`<div class="post-header"><div class="name">${escapeHtml(data.name)}${highlightedTag}<span class="op-tag">OP</span></div><div class="top-right"><div id="btnUp_${id}" class="upvote" onclick='vote("${id}","up")'>🔼 <span id="up_${id}">0</span></div><div id="btnDown_${id}" class="downvote" onclick='vote("${id}","down")'>🔽 <span id="down_${id}">0</span></div></div></div><div class="post-content" id="content_${id}">${contentHtml}</div><div class="post-footer"><div class="bottom-left"><div class="action-btn" onclick='toggleReplies("${id}")'>↓ Show Replies</div></div><div class="bottom-right"><div class="action-btn" onclick='openReply("${id}")'>↩ Reply</div></div></div><div class="time">${new Date(data.time).toLocaleString()}</div>`;
+  postDiv.innerHTML=postHTML;
+  postDiv.appendChild(repliesContainer);
+  feed.prepend(postDiv);
+
+  // add admin buttons only if admin
+  if(isAdmin){ addDeleteButton(id, postDiv); addHighlightButton(id, postDiv); }
+}
+
+/* toggleReplies unchanged */
+function toggleReplies(postId){
+  const r=document.getElementById("replies_"+postId); if(!r) return;
+  const btn=r.parentElement.querySelector(".bottom-left .action-btn");
+  if(r.classList.contains("hidden")){r.classList.remove("hidden"); if(btn) btn.innerText="↑ Hide Replies";} else{r.classList.add("hidden"); if(btn) btn.innerText="↓ Show Replies";}
+}
+
+function escapeHtml(str){if(!str&&str!=="") return ""; return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");}
+function timeAgo(ts){const diff=(Date.now()-ts)/1000;if(diff<60)return Math.floor(diff)+"s ago";if(diff<3600)return Math.floor(diff/60)+"m ago";if(diff<86400)return Math.floor(diff/3600)+"h ago";return Math.floor(diff/86400)+"d ago";}
+
+/* ---------------------------
+   Recursive rendering of replies (UPDATED)
+   Adds support for nested reply path tracking so deleteReply updates the correct DB node.
+   New parameter `replyPath` indicates the path under `replies/<postId>/...` pointing to the reply node.
+   For a top-level reply replyPath === replyId
+   For nested child of replyId: childPath = `${replyPath}/replies/${childId}`
+   --------------------------- */
+function animateReply(replyElement,level=0){
+  setTimeout(()=>{replyElement.classList.add("show"); const nested=replyElement.querySelectorAll(":scope > .replies > .reply-item"); nested.forEach((c,i)=>animateReply(c,level+i+1));},50);
+}
+
+function renderReplyRecursive(postId, replyId, replyData, parentContainer, level=1, replyPath=null){
+  if(!replyData||!replyData.text) return;
+  if(document.getElementById("reply_"+replyPath||replyId)) return;
+  // determine path
+  const path = replyPath || replyId; // replyPath provided for nested calls
+  const rdiv=document.createElement("div");
+  rdiv.className="reply-item";
+  rdiv.id="reply_"+path;
+  rdiv.style.marginLeft=`${level*15}px`;
+  rdiv.style.background=`rgba(20,20,20,${0.05*level+0.9})`;
+
+  const postElem=document.getElementById("post_"+postId);
+  const opName=postElem?.querySelector(".name")?.textContent?.replace("OP","").trim();
+  const isOP=replyData.name===opName?'<span class="op-tag">OP</span>':'';
+  const jumpHTML=replyData.replyTo?`<span class="jump-link" onclick='document.getElementById("reply_${replyData.replyTo}")?.scrollIntoView({behavior:"smooth",block:"center"})'>↩ Jump</span>`:'';
+
+  const replyCount = replyData.replies ? Object.keys(replyData.replies).length : 0;
+  const toggleReplyText = replyCount>0 ? `↓ Show Replies (${replyCount})` : "";
+
+  const contentHtml = replyData.deleted ? `<b>This message has been deleted by an admin of PublicForums</b>` : escapeHtml(replyData.text);
+
+  rdiv.innerHTML = `<div class="name">${escapeHtml(replyData.name||"Anonymous")}${isOP}</div>
+    <div class="text" id="reply_content_${path}">${contentHtml} ${jumpHTML}</div>
+    <div class="bottom-right" style="margin-top:6px;gap:5px;">
+      <div class="action-btn" onclick='openReply("${postId}","${path}")'>↩ Reply</div>
+      ${replyCount>0?`<div class="action-btn" onclick='toggleReplies("${path}")'>${toggleReplyText}</div>`:""}
+    </div>
+    <div class="time" style="margin-top:4px;font-size:12px;color:#aaa;">${timeAgo(replyData.time)}</div>`;
+
+  parentContainer.appendChild(rdiv);
+
+  // if admin, add delete button for this reply
+  if(isAdmin){
+    addDeleteButtonReply(postId, path, rdiv);
+  }
+
+  // render nested replies, if any (build proper path for each)
+  if(replyData.replies && Object.keys(replyData.replies).length>0){
+    const nestedContainer=document.createElement("div");
+    nestedContainer.className="replies hidden";
+    nestedContainer.id="replies_"+path;
+    rdiv.appendChild(nestedContainer);
+
+    for(let cid in replyData.replies){
+      const childPath = `${path}/replies/${cid}`;
+      renderReplyRecursive(postId, cid, replyData.replies[cid], nestedContainer, level+1, childPath);
+    }
+  }
+
+  animateReply(rdiv, level);
+}
+
+/* Menu */
+function openMenu(){document.getElementById("sideMenu").classList.add("open");document.getElementById("menuOverlayBG").classList.add("show");}
+function closeMenu(){document.getElementById("sideMenu").classList.remove("open");document.getElementById("menuOverlayBG").classList.remove("show");}
+
+/* Admin login — when admin logs in, add buttons to existing posts & replies */
+function adminLogin(){
+  if(document.getElementById("adminKey").value===ADMIN_SECRET){
+    isAdmin=true; alert("Admin mode activated!"); closeAdminModal();
+    // add post buttons to existing posts
+    document.querySelectorAll(".post").forEach(p=>{
+      const id=p.id.replace("post_","");
+      addDeleteButton(id,p);
+      addHighlightButton(id,p);
+    });
+    // add reply delete buttons to existing replies (iterate reply containers)
+    // We can find all reply items and add button with their data-path encoded in id
+    document.querySelectorAll(".reply-item").forEach(r=>{
+      // reply element id uses the path format we assigned earlier: "reply_<path>"
+      const rid = r.id.replace(/^reply_/,"");
+      // route needs the postId — find closest post parent
+      const postElem = r.closest(".post");
+      if(postElem){
+        const postId = postElem.id.replace("post_","");
+        addDeleteButtonReply(postId, rid, r);
+      }
+    });
+  }else alert("Wrong key!");
+}
+
+/* Firebase listeners */
+db.ref("posts").on("child_added",snap=>{
+  createPostElement(snap.key,snap.val());
+  updateVotes(snap.key,snap.val().votes||{});
+});
+db.ref("posts").on("child_changed",snap=>{
+  const data = snap.val();
+  // update votes
+  updateVotes(snap.key,data.votes||{});
+  // safe content update
+  const contentEl = document.getElementById(`content_${snap.key}`);
+  if(contentEl){
+    if(data.deleted){
+      contentEl.innerHTML = `<b>This message has been deleted by an admin of PublicForums</b>`;
+    }else{
+      contentEl.innerHTML = escapeHtml(data.text);
+    }
+  }
+  // update highlighted tag
+  const postElem = document.getElementById("post_"+snap.key);
+  if(postElem){
+    const nameDiv = postElem.querySelector(".name");
+    if(nameDiv){
+      // remove existing highlight tag
+      const existing = nameDiv.querySelector(".highlight-tag");
+      if(existing) existing.remove();
+      if(data.highlighted){
+        const tag = document.createElement("span");
+        tag.className="highlight-tag";
+        tag.innerText="⭐ Admin Highlighted";
+        nameDiv.insertBefore(tag, nameDiv.querySelector(".op-tag"));
+      }
+      // ensure admin buttons exist if admin is active
+      if(isAdmin){
+        addDeleteButton(snap.key, postElem);
+        addHighlightButton(snap.key, postElem);
+      }
+    }
+  }
+});
+
+// Replies: when child_added or child_changed happens, re-render that post's replies area
+db.ref("replies").on("child_added",snap=>{
+  const pid=snap.key;
+  const rdata=snap.val();
+  const rContainer=document.getElementById("replies_"+pid);
+  if(rContainer){
+    // render top-level replies
+    for(let rid in rdata){
+      renderReplyRecursive(pid, rid, rdata[rid], rContainer, 1, rid);
+    }
+  }
+});
+db.ref("replies").on("child_changed",snap=>{
+  const pid=snap.key;
+  const rdata=snap.val();
+  const rContainer=document.getElementById("replies_"+pid);
+  if(rContainer){
+    rContainer.innerHTML="";
+    for(let rid in rdata){
+      renderReplyRecursive(pid, rid, rdata[rid], rContainer, 1, rid);
+    }
+  }
+});
+</script>
+
+</body>
+</html>
